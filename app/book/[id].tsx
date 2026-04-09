@@ -11,84 +11,58 @@ import {
   Platform,
 } from "react-native";
 import { useLocalSearchParams, useRouter, Stack } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
 import { useBookStore } from "../../store/bookStore";
 import { StarRating } from "../../components/StarRating";
 import { StatusBadge } from "../../components/StatusBadge";
 import { BookStatus, STATUS_LABELS } from "../../types";
 
-const STATUS_OPTIONS: BookStatus[] = ["to_read", "reading", "done"];
+const STATUS_OPTIONS: { value: BookStatus; emoji: string }[] = [
+  { value: "to_read",  emoji: "🔖" },
+  { value: "reading",  emoji: "📖" },
+  { value: "done",     emoji: "✅" },
+];
 
 export default function BookDetailScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
-  const router = useRouter();
-  const getBook = useBookStore((s) => s.getBook);
+  const { id }    = useLocalSearchParams<{ id: string }>();
+  const router    = useRouter();
+  const getBook   = useBookStore((s) => s.getBook);
   const updateBook = useBookStore((s) => s.updateBook);
   const removeBook = useBookStore((s) => s.removeBook);
 
   const book = getBook(id);
-
-  const [note, setNote] = useState(book?.note ?? "");
+  const [note,    setNote]    = useState(book?.note ?? "");
   const [editing, setEditing] = useState(false);
 
-  useEffect(() => {
-    if (book) setNote(book.note ?? "");
-  }, [book]);
+  useEffect(() => { if (book) setNote(book.note ?? ""); }, [book]);
 
   if (!book) {
     return (
       <View className="flex-1 bg-zinc-950 items-center justify-center">
-        <Text className="text-white text-lg">Livre introuvable.</Text>
+        <Text className="text-zinc-400 text-base">Livre introuvable.</Text>
       </View>
     );
   }
 
   const handleStatusChange = (status: BookStatus) => {
     const updates: Partial<typeof book> = { status };
-    if (status === "reading" && !book.startedAt) {
-      updates.startedAt = new Date().toISOString();
-    }
-    if (status === "done" && !book.finishedAt) {
-      updates.finishedAt = new Date().toISOString();
-    }
+    if (status === "reading" && !book.startedAt)  updates.startedAt  = new Date().toISOString();
+    if (status === "done"    && !book.finishedAt) updates.finishedAt = new Date().toISOString();
     updateBook(id, updates);
   };
 
-  const handleRating = (rating: number) => {
-    updateBook(id, { rating });
-  };
-
-  const handleSaveNote = () => {
-    updateBook(id, { note });
-    setEditing(false);
-  };
-
-  const handleDelete = () => {
+  const handleDelete = () =>
     Alert.alert(
-      "Supprimer le livre",
-      `Voulez-vous vraiment supprimer "${book.title}" de votre bibliothèque ?`,
+      "Supprimer",
+      `Retirer "${book.title}" de votre bibliothèque ?`,
       [
         { text: "Annuler", style: "cancel" },
-        {
-          text: "Supprimer",
-          style: "destructive",
-          onPress: () => {
-            removeBook(id);
-            router.back();
-          },
-        },
+        { text: "Supprimer", style: "destructive", onPress: () => { removeBook(id); router.back(); } },
       ]
     );
-  };
 
-  const formatDate = (iso?: string) => {
-    if (!iso) return "—";
-    return new Date(iso).toLocaleDateString("fr-FR", {
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-    });
-  };
+  const fmt = (iso?: string) => iso
+    ? new Date(iso).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })
+    : "—";
 
   return (
     <KeyboardAvoidingView
@@ -97,246 +71,206 @@ export default function BookDetailScreen() {
     >
       <Stack.Screen
         options={{
-          title: book.title,
+          title: "",
           headerRight: () => (
-            <TouchableOpacity onPress={handleDelete} className="pr-1">
-              <Ionicons name="trash-outline" size={22} color="#f87171" />
+            <TouchableOpacity onPress={handleDelete}>
+              <Text className="text-red-400 font-semibold text-sm">Supprimer</Text>
             </TouchableOpacity>
           ),
         }}
       />
+
       <ScrollView
         className="flex-1"
-        contentContainerClassName="px-4 py-6 pb-12"
+        contentContainerStyle={{ paddingBottom: 48 }}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
         {/* Hero */}
-        <View className="items-center mb-6">
+        <View className="items-center px-6 pt-6 pb-5 border-b border-zinc-900">
           {book.cover ? (
             <Image
               source={{ uri: book.cover }}
-              className="w-32 h-48 rounded-2xl bg-zinc-800 shadow-lg"
+              style={{ width: 120, height: 176, borderRadius: 16 }}
+              className="bg-zinc-800"
               resizeMode="cover"
             />
           ) : (
-            <View className="w-32 h-48 rounded-2xl bg-zinc-800 items-center justify-center shadow-lg">
-              <Ionicons name="book-outline" size={48} color="#7c3aed" />
+            <View
+              className="bg-zinc-800 rounded-2xl items-center justify-center"
+              style={{ width: 120, height: 176 }}
+            >
+              <Text className="text-6xl">📖</Text>
             </View>
           )}
 
-          <Text className="text-white text-xl font-bold text-center mt-4 px-4">
+          <Text className="text-white text-xl font-bold text-center mt-4 px-2 leading-7">
             {book.title}
           </Text>
-          <Text className="text-zinc-400 text-base text-center mt-1">
-            {book.author}
-          </Text>
+          <Text className="text-zinc-400 text-sm text-center mt-1">{book.author}</Text>
 
-          <View className="flex-row gap-2 mt-3 flex-wrap justify-center">
+          <View className="flex-row mt-3" style={{ gap: 6, flexWrap: "wrap", justifyContent: "center" }}>
             <StatusBadge status={book.status} />
             {book.genre ? (
-              <View className="bg-zinc-800 rounded-full px-2 py-0.5 self-start">
+              <View className="bg-zinc-800 rounded-full px-2.5 py-1">
                 <Text className="text-zinc-300 text-sm">{book.genre}</Text>
               </View>
             ) : null}
             {book.pageCount ? (
-              <View className="bg-zinc-800 rounded-full px-2 py-0.5 self-start">
-                <Text className="text-zinc-300 text-sm">{book.pageCount} pages</Text>
+              <View className="bg-zinc-800 rounded-full px-2.5 py-1">
+                <Text className="text-zinc-400 text-sm">{book.pageCount} p.</Text>
               </View>
             ) : null}
           </View>
         </View>
 
-        {/* Status */}
-        <Section title="Statut de lecture">
-          <View className="flex-row gap-2">
-            {STATUS_OPTIONS.map((status) => (
+        <View className="px-4 pt-5">
+          {/* Status */}
+          <SectionLabel title="Statut" />
+          <View className="flex-row mb-5" style={{ gap: 8 }}>
+            {STATUS_OPTIONS.map(({ value, emoji }) => (
               <TouchableOpacity
-                key={status}
-                onPress={() => handleStatusChange(status)}
-                className={`flex-1 py-2.5 rounded-xl border items-center ${
-                  book.status === status
+                key={value}
+                onPress={() => handleStatusChange(value)}
+                className={`flex-1 py-3 rounded-xl border items-center ${
+                  book.status === value
                     ? "bg-violet-600 border-violet-500"
-                    : "bg-zinc-800 border-zinc-700"
+                    : "bg-zinc-900 border-zinc-800"
                 }`}
               >
-                <Text
-                  className={`text-xs font-semibold ${
-                    book.status === status ? "text-white" : "text-zinc-400"
-                  }`}
-                >
-                  {STATUS_LABELS[status]}
+                <Text className="text-base mb-0.5">{emoji}</Text>
+                <Text className={`text-xs font-semibold ${book.status === value ? "text-white" : "text-zinc-500"}`}>
+                  {STATUS_LABELS[value]}
                 </Text>
               </TouchableOpacity>
             ))}
           </View>
-        </Section>
 
-        {/* Rating */}
-        <Section title="Ma note">
-          <View className="flex-row items-center justify-between">
-            <StarRating
-              rating={book.rating}
-              onChange={handleRating}
-              size={32}
-            />
+          {/* Rating */}
+          <SectionLabel title="Ma note" />
+          <View className="bg-zinc-900 rounded-2xl p-4 border border-zinc-800 flex-row items-center justify-between mb-5">
+            <StarRating rating={book.rating} onChange={(r) => updateBook(id, { rating: r })} size={30} />
             {book.rating ? (
               <TouchableOpacity onPress={() => updateBook(id, { rating: undefined })}>
-                <Text className="text-zinc-500 text-sm">Effacer</Text>
+                <Text className="text-zinc-600 text-xs">Effacer</Text>
               </TouchableOpacity>
-            ) : null}
+            ) : (
+              <Text className="text-zinc-700 text-xs italic">Non noté</Text>
+            )}
           </View>
-        </Section>
 
-        {/* Dates */}
-        <Section title="Dates">
-          <View className="gap-2">
+          {/* Dates */}
+          <SectionLabel title="Dates" />
+          <View className="bg-zinc-900 rounded-2xl border border-zinc-800 overflow-hidden mb-5">
             <DateRow
-              icon="play-circle-outline"
+              emoji="▶"
               label="Commencé le"
-              value={formatDate(book.startedAt)}
-              onClear={
-                book.startedAt
-                  ? () => updateBook(id, { startedAt: undefined })
-                  : undefined
-              }
-              onSet={
-                !book.startedAt
-                  ? () =>
-                      updateBook(id, { startedAt: new Date().toISOString() })
-                  : undefined
-              }
+              value={fmt(book.startedAt)}
+              actionLabel={!book.startedAt ? "Aujourd'hui" : undefined}
+              onAction={!book.startedAt ? () => updateBook(id, { startedAt: new Date().toISOString() }) : undefined}
+              onClear={book.startedAt ? () => updateBook(id, { startedAt: undefined }) : undefined}
+              isLast={false}
             />
             <DateRow
-              icon="checkmark-circle-outline"
+              emoji="✓"
               label="Terminé le"
-              value={formatDate(book.finishedAt)}
-              onClear={
-                book.finishedAt
-                  ? () => updateBook(id, { finishedAt: undefined })
-                  : undefined
-              }
-              onSet={
-                !book.finishedAt
-                  ? () =>
-                      updateBook(id, { finishedAt: new Date().toISOString() })
-                  : undefined
-              }
+              value={fmt(book.finishedAt)}
+              actionLabel={!book.finishedAt ? "Aujourd'hui" : undefined}
+              onAction={!book.finishedAt ? () => updateBook(id, { finishedAt: new Date().toISOString() }) : undefined}
+              onClear={book.finishedAt ? () => updateBook(id, { finishedAt: undefined }) : undefined}
+              isLast
             />
           </View>
-        </Section>
 
-        {/* Notes */}
-        <Section title="Commentaire personnel">
+          {/* Notes */}
+          <SectionLabel title="Commentaire" />
           {editing ? (
-            <View>
+            <View className="mb-5">
               <TextInput
-                className="bg-zinc-800 rounded-xl p-3 text-white text-sm min-h-28 text-top"
+                className="bg-zinc-900 rounded-2xl border border-zinc-800 p-4 text-white text-sm"
+                style={{ minHeight: 120, textAlignVertical: "top" }}
                 multiline
                 value={note}
                 onChangeText={setNote}
-                placeholder="Écrivez vos impressions, citations…"
-                placeholderTextColor="#52525b"
+                placeholder="Vos impressions, citations favorites…"
+                placeholderTextColor="#3f3f46"
                 autoFocus
               />
-              <View className="flex-row gap-2 mt-3">
+              <View className="flex-row mt-2" style={{ gap: 8 }}>
                 <TouchableOpacity
-                  className="flex-1 py-2.5 rounded-xl bg-zinc-800 items-center"
-                  onPress={() => {
-                    setNote(book.note ?? "");
-                    setEditing(false);
-                  }}
+                  className="flex-1 py-3 rounded-xl bg-zinc-900 border border-zinc-800 items-center"
+                  onPress={() => { setNote(book.note ?? ""); setEditing(false); }}
                 >
-                  <Text className="text-zinc-400 font-semibold text-sm">
-                    Annuler
-                  </Text>
+                  <Text className="text-zinc-400 font-semibold text-sm">Annuler</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  className="flex-1 py-2.5 rounded-xl bg-violet-600 items-center"
-                  onPress={handleSaveNote}
+                  className="flex-1 py-3 rounded-xl bg-violet-600 items-center"
+                  onPress={() => { updateBook(id, { note }); setEditing(false); }}
                 >
-                  <Text className="text-white font-bold text-sm">
-                    Enregistrer
-                  </Text>
+                  <Text className="text-white font-bold text-sm">Enregistrer</Text>
                 </TouchableOpacity>
               </View>
             </View>
           ) : (
             <TouchableOpacity
-              className="bg-zinc-800 rounded-xl p-3 min-h-16"
+              className="bg-zinc-900 rounded-2xl border border-zinc-800 p-4 mb-5"
               onPress={() => setEditing(true)}
-              activeOpacity={0.75}
+              activeOpacity={0.7}
+              style={{ minHeight: 80 }}
             >
               {book.note ? (
-                <Text className="text-zinc-300 text-sm leading-5">{book.note}</Text>
+                <Text className="text-zinc-300 text-sm leading-6">{book.note}</Text>
               ) : (
-                <Text className="text-zinc-500 text-sm italic">
-                  Appuyez pour ajouter un commentaire…
-                </Text>
+                <Text className="text-zinc-700 text-sm italic">Appuyez pour ajouter un commentaire…</Text>
               )}
             </TouchableOpacity>
           )}
-        </Section>
 
-        {/* Delete */}
-        <TouchableOpacity
-          className="mt-4 py-3.5 rounded-xl border border-red-900 items-center"
-          onPress={handleDelete}
-        >
-          <Text className="text-red-400 font-semibold">
-            Supprimer ce livre
-          </Text>
-        </TouchableOpacity>
+          {/* Delete */}
+          <TouchableOpacity
+            className="py-3.5 rounded-xl border border-red-900/60 items-center"
+            onPress={handleDelete}
+          >
+            <Text className="text-red-500 font-semibold text-sm">🗑 Supprimer ce livre</Text>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
-function Section({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
+function SectionLabel({ title }: { title: string }) {
   return (
-    <View className="mb-5">
-      <Text className="text-zinc-400 text-xs font-semibold uppercase tracking-widest mb-2">
-        {title}
-      </Text>
-      {children}
-    </View>
+    <Text className="text-zinc-500 text-xs font-semibold uppercase tracking-widest mb-2">
+      {title}
+    </Text>
   );
 }
 
 function DateRow({
-  icon,
-  label,
-  value,
-  onClear,
-  onSet,
+  emoji, label, value, actionLabel, onAction, onClear, isLast,
 }: {
-  icon: keyof typeof Ionicons.glyphMap;
+  emoji: string;
   label: string;
   value: string;
+  actionLabel?: string;
+  onAction?: () => void;
   onClear?: () => void;
-  onSet?: () => void;
+  isLast: boolean;
 }) {
   return (
-    <View className="flex-row items-center bg-zinc-900 rounded-xl px-3 py-2.5">
-      <Ionicons name={icon} size={18} color="#7c3aed" />
-      <Text className="text-zinc-400 text-sm ml-2 flex-1">{label}</Text>
-      <Text className="text-white text-sm font-medium">{value}</Text>
-      {onClear && (
-        <TouchableOpacity onPress={onClear} className="ml-2">
-          <Ionicons name="close-circle-outline" size={16} color="#52525b" />
+    <View className={`flex-row items-center px-4 py-3 ${!isLast ? "border-b border-zinc-800" : ""}`}>
+      <Text className="text-violet-500 text-xs w-5">{emoji}</Text>
+      <Text className="text-zinc-400 text-sm flex-1 ml-1">{label}</Text>
+      <Text className="text-white text-sm font-medium mr-2">{value}</Text>
+      {actionLabel && onAction && (
+        <TouchableOpacity onPress={onAction} className="bg-violet-950 rounded-lg px-2 py-1">
+          <Text className="text-violet-400 text-xs font-semibold">{actionLabel}</Text>
         </TouchableOpacity>
       )}
-      {onSet && (
-        <TouchableOpacity onPress={onSet} className="ml-2">
-          <Text className="text-violet-400 text-xs font-semibold">
-            Aujourd'hui
-          </Text>
+      {onClear && (
+        <TouchableOpacity onPress={onClear} className="ml-1">
+          <Text className="text-zinc-600 text-lg leading-none">×</Text>
         </TouchableOpacity>
       )}
     </View>

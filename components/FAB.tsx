@@ -1,11 +1,9 @@
 import React from "react";
-import { TouchableOpacity } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { TouchableOpacity, Text } from "react-native";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
-  withTiming,
 } from "react-native-reanimated";
 
 const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
@@ -21,24 +19,33 @@ export function FAB({ onPress }: Props) {
     transform: [{ scale: scale.value }],
   }));
 
-  const handlePressIn = () => {
-    scale.value = withSpring(0.92);
-  };
-
-  const handlePressOut = () => {
-    scale.value = withSpring(1);
-  };
-
   return (
     <AnimatedTouchable
-      style={[animatedStyle]}
-      className="absolute bottom-6 right-6 w-14 h-14 rounded-full bg-violet-600 items-center justify-center shadow-lg shadow-violet-900"
+      style={[
+        animatedStyle,
+        {
+          position: "absolute",
+          bottom: 24,
+          right: 20,
+          width: 56,
+          height: 56,
+          borderRadius: 28,
+          backgroundColor: "#7c3aed",
+          alignItems: "center",
+          justifyContent: "center",
+          shadowColor: "#7c3aed",
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.5,
+          shadowRadius: 8,
+          elevation: 8,
+        },
+      ]}
       onPress={onPress}
-      onPressIn={handlePressIn}
-      onPressOut={handlePressOut}
+      onPressIn={() => { scale.value = withSpring(0.9, { damping: 15 }); }}
+      onPressOut={() => { scale.value = withSpring(1, { damping: 15 }); }}
       activeOpacity={1}
     >
-      <Ionicons name="add" size={30} color="white" />
+      <Text className="text-white text-3xl leading-none" style={{ marginTop: -2 }}>+</Text>
     </AnimatedTouchable>
   );
 }

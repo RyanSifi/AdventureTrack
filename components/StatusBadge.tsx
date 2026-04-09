@@ -2,16 +2,10 @@ import React from "react";
 import { View, Text } from "react-native";
 import { BookStatus, STATUS_LABELS } from "../types";
 
-const badgeClasses: Record<BookStatus, string> = {
-  to_read: "bg-zinc-700",
-  reading: "bg-indigo-700",
-  done: "bg-violet-700",
-};
-
-const textClasses: Record<BookStatus, string> = {
-  to_read: "text-zinc-200",
-  reading: "text-indigo-100",
-  done: "text-violet-100",
+const config: Record<BookStatus, { bg: string; text: string; dot: string }> = {
+  to_read:  { bg: "bg-zinc-800",   text: "text-zinc-300",   dot: "bg-zinc-400"   },
+  reading:  { bg: "bg-indigo-950", text: "text-indigo-300",  dot: "bg-indigo-400" },
+  done:     { bg: "bg-violet-950", text: "text-violet-300",  dot: "bg-violet-400" },
 };
 
 interface Props {
@@ -20,13 +14,11 @@ interface Props {
 }
 
 export function StatusBadge({ status, small = false }: Props) {
+  const c = config[status];
   return (
-    <View
-      className={`rounded-full px-2 py-0.5 self-start ${badgeClasses[status]} ${small ? "px-1.5 py-0" : ""}`}
-    >
-      <Text
-        className={`font-semibold ${small ? "text-xs" : "text-sm"} ${textClasses[status]}`}
-      >
+    <View className={`flex-row items-center rounded-full self-start ${c.bg} ${small ? "px-2 py-0.5 gap-1" : "px-2.5 py-1 gap-1.5"}`}>
+      <View className={`rounded-full ${c.dot} ${small ? "w-1.5 h-1.5" : "w-2 h-2"}`} />
+      <Text className={`font-semibold ${c.text} ${small ? "text-xs" : "text-sm"}`}>
         {STATUS_LABELS[status]}
       </Text>
     </View>

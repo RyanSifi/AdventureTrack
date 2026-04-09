@@ -8,18 +8,17 @@ import {
   ScrollView,
 } from "react-native";
 import { useRouter } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
 import { BookCard } from "../../components/BookCard";
 import { EmptyState } from "../../components/EmptyState";
 import { FAB } from "../../components/FAB";
 import { useBookStore } from "../../store/bookStore";
 import { BookStatus, STATUS_LABELS } from "../../types";
 
-const FILTER_TABS: { label: string; value: BookStatus | "all" }[] = [
-  { label: "Tous", value: "all" },
-  { label: STATUS_LABELS.to_read, value: "to_read" },
-  { label: STATUS_LABELS.reading, value: "reading" },
-  { label: STATUS_LABELS.done, value: "done" },
+const FILTERS: { label: string; value: BookStatus | "all"; emoji: string }[] = [
+  { label: "Tous",              value: "all",     emoji: "📚" },
+  { label: STATUS_LABELS.to_read,  value: "to_read", emoji: "🔖" },
+  { label: STATUS_LABELS.reading,  value: "reading", emoji: "📖" },
+  { label: STATUS_LABELS.done,     value: "done",    emoji: "✅" },
 ];
 
 export default function LibraryScreen() {
@@ -30,102 +29,110 @@ export default function LibraryScreen() {
 
   const filtered = useMemo(() => {
     let list = books;
-    if (activeFilter !== "all") {
-      list = list.filter((b) => b.status === activeFilter);
-    }
+    if (activeFilter !== "all") list = list.filter((b) => b.status === activeFilter);
     if (query.trim()) {
       const q = query.toLowerCase();
       list = list.filter(
-        (b) =>
-          b.title.toLowerCase().includes(q) ||
-          b.author.toLowerCase().includes(q)
+        (b) => b.title.toLowerCase().includes(q) || b.author.toLowerCase().includes(q)
       );
     }
     return list;
   }, [books, activeFilter, query]);
 
+  const counts = useMemo(() => ({
+    all:     books.length,
+    to_read: books.filter((b) => b.status === "to_read").length,
+    reading: books.filter((b) => b.status === "reading").length,
+    done:    books.filter((b) => b.status === "done").length,
+  }), [books]);
+
   return (
     <View className="flex-1 bg-zinc-950">
-      {/* Search bar */}
-      <View className="px-4 pt-4 pb-2">
-        <View className="flex-row items-center bg-zinc-800 rounded-xl px-3 h-11">
-          <Ionicons name="search-outline" size={18} color="#71717a" />
+      {/* Header */}
+      <View className="px-4 pt-4 pb-3 border-b border-zinc-900">
+        <Text className="text-white text-2xl font-bold mb-3">Ma bibliothèque</Text>
+        {/* Search */}
+        <View className="flex-row items-center bg-zinc-900 rounded-xl px-3 h-10 border border-zinc-800">
+          <Text className="text-zinc-500 mr-2">🔍</Text>
           <TextInput
-            className="flex-1 ml-2 text-white text-base"
-            placeholder="Rechercher un livre…"
-            placeholderTextColor="#71717a"
+            className="flex-1 text-white text-sm"
+            placeholder="Titre, auteur…"
+            placeholderTextColor="#52525b"
             value={query}
             onChangeText={setQuery}
             returnKeyType="search"
           />
           {query.length > 0 && (
             <TouchableOpacity onPress={() => setQuery("")}>
-              <Ionicons name="close-circle" size={18} color="#71717a" />
+              <Text className="text-zinc-500 text-lg leading-none">×</Text>
             </TouchableOpacity>
           )}
         </View>
       </View>
 
-      {/* Filter tabs */}
+      {/* Filter chips */}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        className="px-4 py-2"
-        contentContainerClassName="gap-2"
+        contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 10, gap: 8 }}
       >
-        {FILTER_TABS.map((tab) => (
-          <TouchableOpacity
-            key={tab.value}
-            onPress={() => setActiveFilter(tab.value)}
-            className={`px-4 py-1.5 rounded-full border ${
-              activeFilter === tab.value
-                ? "bg-violet-600 border-violet-600"
-                : "bg-transparent border-zinc-700"
-            }`}
-          >
-            <Text
-              className={`text-sm font-semibold ${
-                activeFilter === tab.value ? "text-white" : "text-zinc-400"
+        {FILTERS.map((f) => {
+          const isActive = activeFilter === f.value;
+          const count = counts[f.value];
+          return (
+            <TouchableOpacity
+              key={f.value}
+              onPress={() => setActiveFilter(f.value)}
+              className={`flex-row items-center rounded-full px-3 py-1.5 border ${
+                isActive
+                  ? "bg-violet-600 border-violet-500"
+                  : "bg-zinc-900 border-zinc-800"
               }`}
             >
-              {tab.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
+              <Text className="text-sm mr-1">{f.emoji}</Text>
+              <Text className={`text-xs font-semibold ${isActive ? "text-white" : "text-zinc-400"}`}>
+                {f.label}
+              </Text>
+              <View className={`ml-1.5 rounded-full px-1.5 py-0.5 ${isActive ? "bg-violet-500" : "bg-zinc-800"}`}>
+                <Text className={`text-xs font-bold ${isActive ? "text-white" : "text-zinc-400"}`}>
+                  {count}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          );
+        })}
       </ScrollView>
 
-      {/* Count */}
-      <Text className="text-zinc-500 text-xs px-4 mb-1">
-        {filtered.length} livre{filtered.length !== 1 ? "s" : ""}
-      </Text>
-
-      {/* Book list */}
+      {/* List */}
       <FlatList
         data={filtered}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => <BookCard book={item} />}
-        contentContainerClassName="px-4 pb-24 flex-grow"
+        contentContainerStyle={{
+          paddingHorizontal: 16,
+          paddingBottom: 100,
+          flexGrow: 1,
+        }}
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
           <EmptyState
-            icon="book-outline"
+            emoji={query ? "🔍" : activeFilter === "all" ? "📚" : "🔖"}
             title={
               query
                 ? "Aucun résultat"
                 : activeFilter === "all"
-                ? "Votre bibliothèque est vide"
-                : `Aucun livre "${STATUS_LABELS[activeFilter as BookStatus]}"`
+                ? "Bibliothèque vide"
+                : `Aucun livre « ${STATUS_LABELS[activeFilter as BookStatus]} »`
             }
             subtitle={
               query
                 ? "Essayez un autre mot-clé."
-                : "Ajoutez votre premier livre via l'onglet Recherche."
+                : "Appuyez sur + pour ajouter votre premier livre."
             }
           />
         }
       />
 
-      {/* FAB */}
       <FAB onPress={() => router.push("/search")} />
     </View>
   );
